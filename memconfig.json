@@ -1,0 +1,51 @@
+{
+  "schema": {
+    "types": [
+      {
+        "name": "Root",
+        "actions": [
+          {
+            "name": "question",
+            "type": "String",
+            "params": [
+              {
+                "name": "task",
+                "type": "String"
+              }
+            ]
+          },
+          {
+            "name": "createEmbedding",
+            "type": "String",
+            "hints": { 
+              "hidden": true 
+             },
+            "params": [
+              {
+                "name": "text",
+                "type": "String"
+              }
+            ]
+          },
+          {
+            "name": "answer",
+            "type": "String",
+            "params": [
+              {
+                "name": "text",
+                "type": "String"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "dependencies": {
+    "openai": "openai:",
+    "pinecone": "pinecone:",
+    "http": "http:",
+    "directory_surgeon": "directory-surgeon:",
+    "schema": "schema-surgeon:"
+  }
+}

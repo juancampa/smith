@@ -17,9 +17,9 @@
           {
             "name": "createEmbedding",
             "type": "String",
-            "hints": { 
-              "hidden": true 
-             },
+            "hints": {
+              "hidden": true
+            },
             "params": [
               {
                 "name": "text",
@@ -46,6 +46,7 @@
     "pinecone": "pinecone:",
     "http": "http:",
     "directory_surgeon": "directory-surgeon:",
-    "schema": "schema-surgeon:"
+    "schema": "schema-surgeon:",
+    "meta": "meta-driver:"
   }
 }

@@ -1,5 +1,7 @@
+import { $$ } from "@membrane/membrane-sdk-js";
+
+// generate the json of paramters for function completions
 function transformJSON(params, metadata) {
-  
   const typeMappings = {
     Int: "number",
     String: "string",
@@ -13,21 +15,23 @@ function transformJSON(params, metadata) {
     properties: {},
     required: [],
   };
-  
-  if (metadata.query) {
-    const cleanedString = metadata.query.replace(/[{} ]/g, '');
-    const stringArray = cleanedString.split(',');
 
-    transformed.properties['queryFields'] = {
-      type: 'string',
+  if (metadata.query) {
+    const cleanedString = metadata.query.replace(/[{} ]/g, "");
+    const stringArray = cleanedString.split(",");
+
+    transformed.properties["queryFields"] = {
+      type: "string",
       description: `This parameter is used to get this information [${stringArray}] of a ${metadata.type} type, available in ${metadata.program}. return in array of strings.`,
     };
-    transformed.required.push('queryFields');
+    transformed.required.push("queryFields");
   }
 
   params.forEach((param) => {
+    const { result, booleanValue } = extractBooleanValue(param);
+
     let type = "unknown";
-    const item = param.split("$");
+    const item = result.split("$");
 
     if (item.length === 3) {
       type = item[2];
@@ -38,11 +42,12 @@ function transformJSON(params, metadata) {
       return;
     }
     const transformedType = typeMappings[type];
-    transformed.properties[param] = {
+    transformed.properties[result] = {
       type: transformedType.toLowerCase(),
     };
-
-    // transformed.required.push(param);
+    if (!booleanValue) {
+      transformed.required.push(result);
+    }
   });
 
   return transformed;
@@ -51,6 +56,20 @@ function transformJSON(params, metadata) {
 function transformString(inputString) {
   var transformedString = inputString.replace(/:/g, "_");
   return transformedString;
+}
+
+// parse param$type$#optional and return the boolean and the string of param$type
+function extractBooleanValue(str) {
+  const splitArray = str.split("#");
+  const extractedValue = splitArray[splitArray.length - 1];
+  const booleanValue =
+    extractedValue === "true"
+      ? true
+      : extractedValue === "false"
+      ? false
+      : null;
+  const result = splitArray.slice(0, splitArray.length - 1).join("#");
+  return { result, booleanValue };
 }
 
 function extractParams(inputString: string): string[] {
@@ -64,41 +83,79 @@ function extractParams(inputString: string): string[] {
   return params;
 }
 
-function replaceVars(input, vars) {
-  let output = input;
-  Object.entries(vars).forEach(([key, value]) => {
-    const pattern = new RegExp(`"{${key.replace(/\$/g, "\\$")}}"`, "g");
-    if (typeof value === "string") {
-      output = output.replace(pattern, `"${value}"`);
-    } else {
-      output = output.replace(pattern, value);
-    }
-  });
-  return output;
-}
-
-async function api(method: string, path: string, query?: any, body?: string) {
-  if (query) {
-    Object.keys(query).forEach((key) => (query[key] === undefined ? delete query[key] : {}));
-  }
-  const querystr = query && Object.keys(query).length ? `?${new URLSearchParams(query)}` : "";
-
-  //******************* TODO: use https ***************//
-  const url = `http://api.membrane.io/${path}${querystr}`;
-
-  const req = {
-    method,
-    body,
-    headers: {
-      Authorization: `Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ik1qazBRekl5TmtJek9ERTNORFV4TVRjMVF6STRSREk0TlRaRVFVUTVNalV5TnpsQ05UY3dRZyJ9.eyJpc3MiOiJodHRwczovL2F1dGgubWVtYnJhbmUuaW8vIiwic3ViIjoiYXV0aDB8NWE3YzEzZjI2MjBlOWM0NTJhMThjYWRiIiwiYXVkIjoiaHR0cHM6Ly9tZW1icmFuZS5pby9hcGkiLCJpYXQiOjE2ODU1NzA4NjUsImV4cCI6MTY4ODE2Mjg2NSwiYXpwIjoiTmxMSUtEYVF5U1RyeWlQMGE2UUw4bzJOZ1JLMElYTEsiLCJzY29wZSI6Im9mZmxpbmVfYWNjZXNzIn0.szpylBvhRw80Gt18rcXNXdlLgXb52-qEQ5mgbrqUbYfM36TnTUdTCs-qYf8ygFrjS4mw-skICKgd-MfF4pYp8Vcz8qVOsldGeyKqfDc1oosqing_0Vxugjb1l1ybVo9bbLDNOWhh8GDXnnrqlbfbgG7mlu6r471O_CkMU2-DHl1LfotmIbl5G6Kc7VpK6vcyYcAcHg2FC6gM_3472w9Yw-skH42kAVsrZwdxhOkfl9gwcyN-GSrEnwwe1t2rP3FRpYndxsgvCGiJZRLhMIKjczn1XPz58xTNbNGvcUeJlLRAmkGUDJkvIhsw7YsU3aruKATgfqoaIey1YgEQys8zuw`,
-      "Content-Type": "application/json",
-    },
-  };
-  return await fetch(url, req);
-}
-
 function isScalar(name) {
-  return typeof name === "string" && /^(Int|Float|String|Boolean|Void)$/.test(name);
+  return (
+    typeof name === "string" && /^(Int|Float|String|Boolean|Void)$/.test(name)
+  );
 }
 
-export { isScalar, api, replaceVars, extractParams, transformJSON, transformString };
+function isObjectEmpty(obj) {
+  return Object.keys(obj).length === 0;
+}
+
+// function to replace the args value for the ref
+function replaceArgs(obj, args) {
+  const regex = /\{([^{}]+)\}/g;
+
+  const replaceFn = (_, match) => {
+    const argValue = args[match];
+    if (argValue !== undefined && argValue !== "" && argValue !== "undefined") {
+      return argValue;
+    }
+    return undefined;
+  };
+
+  const jsonString = JSON.stringify(obj);
+  const replacedString = jsonString.replace(regex, replaceFn);
+  const replacedObj = JSON.parse(replacedString, (_, value) => {
+    if (typeof value === "string") {
+      try {
+        const parsedValue = JSON.parse(value);
+        if (
+          typeof parsedValue === "boolean" ||
+          typeof parsedValue === "number"
+        ) {
+          return parsedValue;
+        }
+        return value;
+      } catch (error) {}
+    }
+    return value;
+  });
+
+  const result = {};
+  for (const key in replacedObj) {
+    const propertyValue = replacedObj[key];
+    if (propertyValue !== undefined && propertyValue !== "undefined") {
+      result[key] = propertyValue;
+    }
+  }
+  return result;
+}
+
+// function to create a new ref with args
+function createRef(ref: any, args: any): any {
+  const program = ref.program + ":";
+  let newRef = $$(program);
+  for (let i = 0; i < ref.path.size; ++i) {
+    const patch = ref.path.get(i).name;
+    const argsRef = ref.path.get(i).args.toObject();
+    if (!isObjectEmpty(argsRef)) {
+      const obj = replaceArgs(argsRef, args);
+      newRef = newRef.push(patch, obj);
+    } else {
+      newRef = newRef.push(patch);
+    }
+  }
+  return newRef.toString();
+}
+
+export {
+  createRef,
+  isObjectEmpty,
+  replaceArgs,
+  isScalar,
+  extractParams,
+  transformJSON,
+  transformString,
+};

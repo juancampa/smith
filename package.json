@@ -1,0 +1,8 @@
+{
+  "name": "membrane-agent",
+  "version": "1.0.0",
+  "license": "ISC",
+  "dependencies": {
+    "@membrane/membrane-sdk-js": "^0.1.0"
+  }
+}

@@ -1,0 +1,4 @@
+[options]
+
+# This is needed since programService require() files downloaded from S3
+module.ignore_non_literal_requires=true

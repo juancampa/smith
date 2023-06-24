@@ -21,10 +21,12 @@ export class LLM {
   }
 
   async execute(): Promise<any> {
-    const result = await nodes.openai.models.one({ id: "gpt-4-0613" }).completeChat({
-      messages: JSON.stringify(this.messages),
-      functions: JSON.stringify(this.functions),
-    });
+    const result = await nodes.openai.models
+      .one({ id: "gpt-4-0613" })
+      .completeChat({
+        messages: JSON.stringify(this.messages),
+        functions: JSON.stringify(this.functions),
+      });
     return JSON.parse(result);
   }
 

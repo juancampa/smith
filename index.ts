@@ -1,26 +1,26 @@
 import { nodes, root, state } from "membrane";
-const INDEX = "membrane";
 import { LLM } from "./llm";
+import { $$ } from "@membrane/membrane-sdk-js";
 import {
-  api,
-  replaceVars,
+  createRef,
   extractParams,
   transformJSON,
   transformString,
 } from "./utils";
+
+const INDEX = "membrane";
 let questionPromise = state.questionPromise ?? null;
 
 export async function question({ args: { task } }) {
   // Query the Pinecone index to find matching tools
   const vector = await root.createEmbedding({ text: task });
   const res = await nodes.pinecone.indexes.one({ name: INDEX }).query({
-    top_k: 10,
+    top_k: 20,
     includeMetadata: true,
     vector,
     namespace: "fields_functions",
   });
   const { matches } = JSON.parse(res);
-
   // Pre-defined system tools
   let tools: any = [
     {
@@ -78,6 +78,7 @@ export async function question({ args: { task } }) {
     };
     tools.push(actionObj);
   }
+  console.log(JSON.stringify(tools, null, 2));
 
   const prompt = `Don't make assumptions about what values. Ask for clarification if a user request is ambiguous, use the 'function: ask' to clarify.`;
   const bot = new LLM(prompt, tools);
@@ -91,6 +92,12 @@ export async function question({ args: { task } }) {
       break;
     }
     const funResult = await bot.user(next_prompt);
+
+    if (!funResult.function_call) {
+      console.log(funResult.content);
+      break;
+    }
+
     const fun = funResult.function_call;
     const args = JSON.parse(fun.arguments);
 
@@ -126,7 +133,6 @@ export async function createEmbedding({ args: { text } }) {
 
 async function ask(action, promises) {
   const promise = new Promise((resolve) => {
-    // Save the promise
     console.log(
       `Please run :answer to resolve the parameter: ${action.question}`
     );
@@ -138,7 +144,11 @@ async function ask(action, promises) {
 
 async function executeFunction(matches, args, bot, fun) {
   let result = matches.find((match) => transformString(match.id) === fun.name);
-  const ref = replaceVars(result.metadata.ref, args);
+  const actionRef = $$(result.metadata.ref.replace(/#(true|false)/g, ""));
+
+  const ref = createRef(actionRef, args);
+  console.log(`Ref: ${ref}`);
+
   console.log(`Executing: ${fun.name}`);
 
   if (args.queryFields) {
@@ -147,21 +157,19 @@ async function executeFunction(matches, args, bot, fun) {
   }
 
   const actionResult = await performAction(ref);
+
   return await handleActionResult(actionResult, bot, fun.name);
 }
 
 async function performAction(ref) {
-  return await api("POST", "action", null, JSON.stringify({ gref: ref }));
+  const result = await nodes.meta.action({ gref: ref });
+
+  return JSON.parse(result);
 }
 
 async function performQuery(ref, queryFields) {
-  const queryResult = await api(
-    "POST",
-    "query",
-    null,
-    JSON.stringify({ gref: ref, query: `{${queryFields}}` })
-  );
-  return await queryResult.json();
+  const result = await nodes.meta.query({ ref, query: `{${queryFields}}` });
+  return JSON.parse(result);
 }
 
 async function handleQueryResult(queryResult, bot, functionName) {
@@ -177,12 +185,11 @@ async function handleQueryResult(queryResult, bot, functionName) {
   } else {
     answer = answer.content;
   }
-
   return answer;
 }
 
 async function handleActionResult(actionResult, bot, functionName) {
-  const { data, errors } = await actionResult.json();
+  const { data, errors } = actionResult;
   let result;
   // Check if there are any errors
   if (errors.length > 0) {
@@ -191,7 +198,7 @@ async function handleActionResult(actionResult, bot, functionName) {
     result = `Executed successfully`;
   }
 
-  let answer = await bot.function(JSON.stringify({ result }), functionName);
+  let answer = await bot.function(result, functionName);
 
   if (answer.content === null) {
     const tool = JSON.parse(answer.function_call.arguments);

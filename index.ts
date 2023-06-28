@@ -37,7 +37,7 @@ export async function configure() {
   }
 }
 
-export async function question({ args: { task } }) {
+export async function objetive({ args: { text } }) {
   // Verify that the programs are loaded in pinecone
   if (!state.directoryPrograms.length || !state.userPrograms.length) {
     throw new Error(
@@ -45,7 +45,7 @@ export async function question({ args: { task } }) {
     );
   }
   // Query the Pinecone index to find matching tools
-  const vector = await createEmbedding({ text: task });
+  const vector = await createEmbedding({ text: text });
   const res = await nodes.pinecone.indexes.one({ name: INDEX }).query({
     top_k: 20,
     includeMetadata: true,
@@ -116,7 +116,7 @@ export async function question({ args: { task } }) {
 
   const promises: any[] = [];
   let resolved = false;
-  let next_prompt = task;
+  let next_prompt = text;
 
   while (true) {
     if (resolved) {
@@ -147,8 +147,8 @@ export async function question({ args: { task } }) {
         next_prompt = "sleep done";
         break;
       default:
-        console.log(await executeFunction(matches, args, bot, fun));
         resolved = true;
+        console.log(await executeFunction(matches, args, bot, fun));
     }
   }
 }
@@ -225,7 +225,7 @@ async function handleActionResult(actionResult, bot, functionName) {
   if (errors.length > 0) {
     result = `Failed to execute. Error: ${JSON.stringify(errors)}`;
   } else {
-    result = `Executed successfully`;
+    result = `Executed successfully, Results: ${JSON.stringify(data)}`;
   }
 
   let answer = await bot.function(result, functionName);
@@ -243,9 +243,10 @@ async function handleActionResult(actionResult, bot, functionName) {
 async function loadDirectoryPrograms() {
   try {
     // Fetching all programs of directory
-    const repos = await nodes.directory.content.dir.$query(
-      `{ name sha html_url size download_url }`
-    );
+    const repos = await nodes.github.users
+      .one({ name: "membrane-io" })
+      .repos.one({ name: "directory" })
+      .content.dir.$query(`{ name sha html_url size download_url }`);
     // Filtering the programs by checking if they are submodules
     const isSubmodule = (item: any) => !item.download_url && item.size === 0;
     let actions: any[] = [];
@@ -281,7 +282,7 @@ async function loadDirectoryPrograms() {
     );
     if (actions.length > 0) {
       await assignEmbeddingsToActions(actions);
-      console.log(`saving ${actions.length} actions`);
+      console.log(`saving ${actions.length} nodes.`);
 
       for (let i = 0; i < actions.length; i += BATCH_SIZE) {
         const group = actions.slice(i, i + BATCH_SIZE);
@@ -298,7 +299,9 @@ async function loadDirectoryPrograms() {
 
 async function loadUserPrograms() {
   try {
-    const programs = await nodes.programs.items.$query(`{ name, schema }`);
+    const programs = await nodes.meta.programs
+      .page({ include_schemas: true })
+      .items.$query(`{ name, schema }`);
     let actions: any[] = [];
     for (const program of programs) {
       const schema = JSON.parse(program.schema as string);
@@ -323,7 +326,7 @@ async function loadUserPrograms() {
     if (actions.length > 0) {
       // Assign embeddings to actions
       await assignEmbeddingsToActions(actions);
-      console.log(`saving ${actions.length} actions`);
+      console.log(`saving ${actions.length} nodes.`);
 
       // Index the actions in batches to Pinecone
       for (let i = 0; i < actions.length; i += BATCH_SIZE) {

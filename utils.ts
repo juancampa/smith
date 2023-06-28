@@ -1,5 +1,5 @@
+import { nodes, root, state } from "membrane";
 import { $$ } from "@membrane/membrane-sdk-js";
-
 // generate the json of paramters for function completions
 function transformJSON(params, metadata) {
   const typeMappings = {
@@ -150,7 +150,54 @@ function createRef(ref: any, args: any): any {
   return newRef.toString();
 }
 
+async function assignEmbeddingsToActions(actions) {
+  // Collect the descriptions for all actions
+  const descriptions = actions.map((action) => action.metadata.description);
+  const embeddingPromises: Promise<any>[] = [];
+  const embeddingPromise = getAdaEmbedding(JSON.stringify(descriptions));
+  embeddingPromises.push(embeddingPromise);
+
+  const embeddingResult = await embeddingPromise;
+  const embeddings = JSON.parse(embeddingResult);
+
+  // Assign the embeddings to the corresponding actions
+  for (let i = 0; i < embeddings.length; i++) {
+    actions[i].values = embeddings[i].embedding;
+  }
+
+  await Promise.all(embeddingPromises);
+}
+
+// Get the Ada embedding for the given text.
+async function getAdaEmbedding(inputs: string): Promise<string> {
+  const result = await nodes.openai.models
+    .one({ id: "text-embedding-ada-002" })
+    .createEmbeddings({ inputs });
+
+  return JSON.stringify(JSON.parse(result));
+}
+
+// Get a repository from the given URL.
+function repoFromUrl(url: string): github.Repository {
+  const [, user, repo] = url.match("https://github.com/([^/]+)/([^/]+)")!;
+  return nodes.github.users.one({ name: user }).repos.one({ name: repo });
+}
+
+// https://stackoverflow.com/questions/6122571/simple-non-secure-hash-function-for-javascript
+function computeStringHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash &= hash; // Convert to 32bit integer
+  }
+  return new Uint32Array([hash])[0].toString(36);
+}
+
 export {
+  computeStringHash,
+  repoFromUrl,
+  assignEmbeddingsToActions,
   createRef,
   isObjectEmpty,
   replaceArgs,

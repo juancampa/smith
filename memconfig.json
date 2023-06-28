@@ -5,24 +5,15 @@
         "name": "Root",
         "actions": [
           {
+            "name": "configure",
+            "type": "Void"
+          },
+          {
             "name": "question",
             "type": "String",
             "params": [
               {
                 "name": "task",
-                "type": "String"
-              }
-            ]
-          },
-          {
-            "name": "createEmbedding",
-            "type": "String",
-            "hints": {
-              "hidden": true
-            },
-            "params": [
-              {
-                "name": "text",
                 "type": "String"
               }
             ]
@@ -42,11 +33,14 @@
     ]
   },
   "dependencies": {
+    "github": "github:",
+    "directory": "github:users.one(name:\"membrane-io\").repos.one(name:\"directory\")",
     "openai": "openai:",
     "pinecone": "pinecone:",
     "http": "http:",
     "directory_surgeon": "directory-surgeon:",
     "schema": "schema-surgeon:",
-    "meta": "meta-driver:"
+    "meta": "meta-driver:",
+    "programs": "meta-driver:programs.page(include_schemas:true)"
   }
 }

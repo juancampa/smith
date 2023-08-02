@@ -24,8 +24,8 @@ export class LLM {
     const result = await nodes.openai.models
       .one({ id: "gpt-4-0613" })
       .completeChat({
-        messages: JSON.stringify(this.messages),
-        functions: JSON.stringify(this.functions),
+        messages: this.messages,
+        functions: this.functions,
       });
     return JSON.parse(result);
   }

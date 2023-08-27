@@ -1,6 +1,6 @@
 # Membrane AGI Agent
 
-This is a AI-powered task management system Based on [BabyAGI](https://babyagi.org/) that uses Membrane, OpenAI and Pinecone.
+This is a AI-powered task management system Based on [BabyAGI](https://babyagi.org/) that uses Membrane and OpenAI.
 
 # Install
 

@@ -14,7 +14,7 @@ import {
   upsert
 } from "./utils";
 
-// The maximum batch size for indexing programs in pinecone
+// The maximum batch size for indexing programs in state
 const BATCH_SIZE = 25;
 
 state.directoryPrograms = state.directoryPrograms ?? [];
@@ -39,10 +39,9 @@ export async function configure() {
 }
 
 export async function objetive({ args: { text } }) {
-  // Verify that the programs are loaded in pinecone
   if (!state.directoryPrograms.length || !state.userPrograms.length) {
     throw new Error(
-      "Invoke `:configure` to load the programs into the Pinecone database."
+      "Invoke `:configure` to load the programs."
     );
   }
 
@@ -321,7 +320,6 @@ async function loadUserPrograms() {
       await assignEmbeddingsToActions(actions);
       console.log(`saving ${actions.length} nodes.`);
 
-      // Index the actions in batches to Pinecone
       for (let i = 0; i < actions.length; i += BATCH_SIZE) {
         const group = actions.slice(i, i + BATCH_SIZE);
         upsert(group, "functions");

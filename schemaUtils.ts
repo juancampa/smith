@@ -36,7 +36,7 @@ export function traverse(
 
         const id = `${programName}:${typeName}:${action.name}`;
 
-        let result = programName + ":" + t1.ref + dot + action.name;
+        let result = programName + t1.ref + dot + action.name;
         if (args?.length > 0) {
           result += `(${args.join(", ")})`;
         }
@@ -58,8 +58,8 @@ export function traverse(
 
   // only save a collection of a types
   if (!isPage(typeName)) {
-    const ref = programName + ":" + t1.ref;
-    const names = fields
+    const ref = programName + t1.ref;
+    const names = (fields || [])
       .filter((obj) => isPrimitiveTypeName(obj.type))
       .map((obj) => obj.name);
 
@@ -138,136 +138,4 @@ function isPage(input: string): boolean {
 
 function isWrapperTypeName(typeName) {
   return typeName === "Ref" || typeName === "List";
-}
-
-function isObject(o) {
-  return o && typeof o === "object" && !Array.isArray(o);
-}
-
-export class SchemaTraversal {
-  private context: any;
-  private schema: any;
-  private rootType: any;
-
-  constructor(schema, rootType = "Root") {
-    this.schema = schema;
-    this.context = [{ schema }];
-    const type = schema.types.find((t) => t.name === "Root");
-    this.rootType = type;
-    this.context = [];
-    this._pushRoot();
-  }
-  _pushRoot() {
-    this.context.push({
-      isRoot: true,
-      type: this.rootType,
-      schema: this.schema || [],
-    });
-  }
-  getSchema() {
-    return this.context[this.context.length - 1].schema;
-  }
-  getType() {
-    return this.context[this.context.length - 1].type;
-  }
-  getContext() {
-    return this.context[this.context.length - 1];
-  }
-  getScalarFields(filter = {}) {
-    if (filter.fields === undefined) {
-      filter.fields = true;
-    }
-    const { fields = [] } = this.getType();
-    return [
-      ...(filter.fields
-        ? fields.filter(
-            (f) => !isPrimitiveTypeName(f.type) && !isWrapperTypeName(f.type)
-          )
-        : []),
-    ];
-  }
-  // if there is no member with the provided name
-  enterMember(name, args) {
-    if (typeof name !== "string" || name.length === 0) {
-      throw new Error("Expected member name to be a non-empty string");
-    }
-    if (args && !isObject(args)) {
-      throw new Error("Expected args to be an object");
-    }
-    if (!this.getContext()) {
-      return false;
-    }
-    const { typed, memberKind } = this._getMemberAndKind(name);
-    if (!typed) {
-      return false;
-    }
-
-    let info;
-    info = this._getTypedInfo(typed);
-
-    this.context.push({ memberKind, member: typed, args, ...info });
-    return true;
-  }
-
-  get ref() {
-    const { context } = this;
-    let i;
-    for (i = context.length - 1; i >= 0; --i) {
-      if (context[i].isRoot) {
-        break;
-      }
-    }
-
-    let result = "";
-    for (i += 1; i < context.length; ++i) {
-      result += context[i].member.name;
-
-      if (context[i].args) {
-        const args = Object.entries(context[i].args).map(
-          ([key, value]) => `${key}:"${value}"`
-        );
-        result += `(${args.join(", ")})`;
-      }
-
-      if (i !== context.length - 1) {
-        result += ".";
-      }
-    }
-    return result;
-  }
-
-  _getTypedInfo(typed) {
-    const typeName = typed.type;
-    let type;
-    if (isPrimitiveTypeName(typeName)) {
-      type = { name: typeName };
-    } else {
-      type = this.schema.types.find((t) => t.name === typeName);
-    }
-
-    return {
-      // The schema where typed's type resides
-      schema: this.schema,
-      // The innertype's type object
-      type,
-    };
-  }
-
-  pop() {
-    return this.context.pop();
-  }
-  _getMemberAndKind(name) {
-    const { type } = this.getContext();
-    let typed;
-    let memberKind;
-    if (type.fields) {
-      typed = type.fields.find((f) => f.name === name);
-      memberKind = "field";
-    }
-    if (typed === undefined && type.actions) {
-      typed = type.actions.find((f) => f.name === name);
-      memberKind = "action";
-    }
-    return { typed, memberKind };
-  }
 }

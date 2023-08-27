@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@membrane/membrane-sdk-js@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@membrane/membrane-sdk-js/-/membrane-sdk-js-0.1.0.tgz#bc963825910c492da0c77ea8cdcc075cf085d81b"
-  integrity sha512-HuLQFtZ9DMQeoR8/gmrX++fN+LUZt2/co1gi50X/w9RE+F3RyigGCpcvPDmVva9X9d7Xwf5dsXF3xXevg1iNyA==
+"@membrane/membrane-sdk-js@^0.2.1":
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/@membrane/membrane-sdk-js/-/membrane-sdk-js-0.2.1.tgz#66182c1ff96b00033558e99b679e08eb1ab65da6"
+  integrity sha512-/NV6MMRP0F11jSGO/E+NpMm44zyDHkDctfBILgwDYRC/vUNy3/BUg8rtLnvrnJl6Zu8LAB1AtjX1W5hgBhEKEw==
   dependencies:
     deep-equal "^1.0.1"
     immutable "^4.3.0"
@@ -150,3 +150,13 @@ regexp.prototype.flags@^1.2.0:
     call-bind "^1.0.2"
     define-properties "^1.2.0"
     functions-have-names "^1.2.3"
+
+vectorcalc@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/vectorcalc/-/vectorcalc-1.1.0.tgz#75160fe26a6fdbea799cf4e0b2197b742f078fd2"
+  integrity sha512-CF9GJuXlgf2NSk2l9s3c2XwE+iTXBJ7Z98V7Y4xzrbJGffbC/altJvfU35Uf2InN8Q+s95VbJu7C5E6wfvoHiQ==
+  dependencies:
+    deep-equal "^1.0.1"
+    immutable "^4.3.0"
+    lodash.debounce "^4.0.8"
+    promise-timeout "1.1.1"

@@ -1,5 +1,8 @@
 import { nodes, root, state } from "membrane";
 import { $$ } from "@membrane/membrane-sdk-js";
+import { magnitude, similarityScores } from "vectorcalc";
+
+state.vectors = state.vectors || {};
 // generate the json of paramters for function completions
 function transformJSON(params, metadata) {
   const typeMappings = {
@@ -7,7 +10,7 @@ function transformJSON(params, metadata) {
     String: "string",
     Boolean: "boolean",
     Void: "void",
-    Float: "number",
+    Float: "number"
   };
 
   const transformed: any = {
@@ -158,23 +161,23 @@ async function assignEmbeddingsToActions(actions) {
   embeddingPromises.push(embeddingPromise);
 
   const embeddingResult = await embeddingPromise;
-  const embeddings = JSON.parse(embeddingResult);
+  const embeddings = embeddingResult;
 
   // Assign the embeddings to the corresponding actions
   for (let i = 0; i < embeddings.length; i++) {
-    actions[i].values = embeddings[i].embedding;
+    actions[i].vector = embeddings[i].embedding;
   }
 
   await Promise.all(embeddingPromises);
 }
 
 // Get the Ada embedding for the given text.
-async function getAdaEmbedding(inputs: string): Promise<string> {
+async function getAdaEmbedding(inputs: string): Promise<any> {
   const result = await nodes.openai.models
     .one({ id: "text-embedding-ada-002" })
     .createEmbeddings({ inputs });
 
-  return JSON.stringify(JSON.parse(result));
+  return result;
 }
 
 // Get a repository from the given URL.
@@ -194,7 +197,48 @@ function computeStringHash(str) {
   return new Uint32Array([hash])[0].toString(36);
 }
 
+function upsert(vectors: any[], namespace: string) {
+  // If the namespace doesn't exist, create it.
+  if (!state.vectors[namespace]) {
+    state.vectors[namespace] = [];
+  }
+
+  // Iterate through the items to upsert.
+  for (const newItem of vectors) {
+    const existingIndex = state.vectors[namespace].findIndex(
+      (item) => item.id === newItem.id
+    );
+    if (existingIndex !== -1) {
+      // If the item with the same ID exists, update it.
+      state.vectors[namespace][existingIndex] = {
+        ...state.vectors[namespace][existingIndex],
+        ...newItem,
+      };
+    } else {
+      // If the item doesn't exist, insert it.
+      state.vectors[namespace].push(newItem);
+    }
+  }
+
+  state.vectors[namespace] = state.vectors[namespace].map((item) => {
+    const values = magnitude(item.vector);
+    return { ...item, vectorMag: values };
+  });
+}
+
+function query(topN: number, vector: number[], namespace: string) {
+  const vectors = state.vectors[namespace];
+  if (!vectors) {
+    console.log(`Namespace ${namespace} does not exist.`);
+    return [];
+  }
+  const result = similarityScores(vectors, vector, magnitude(vector), topN);
+  return result.map(({ vectors, vector, vectorMag, ...rest }) => rest);
+}
+
 export {
+  query,
+  upsert,
   computeStringHash,
   repoFromUrl,
   assignEmbeddingsToActions,

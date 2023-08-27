@@ -34,7 +34,6 @@
   },
   "dependencies": {
     "openai": "openai:",
-    "pinecone": "pinecone:",
     "github": "github:",
     "meta": "meta-driver:"
   }

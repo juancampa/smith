@@ -1,7 +1,7 @@
 import { nodes, root, state } from "membrane";
-import { $$ } from "@membrane/membrane-sdk-js";
+import { $$, SchemaTraversal} from "@membrane/membrane-sdk-js";
 import { LLM } from "./llm";
-import { traverse, SchemaTraversal } from "./schemaUtils";
+import { traverse } from "./schemaUtils";
 import {
   createRef,
   extractParams,
@@ -10,11 +10,12 @@ import {
   computeStringHash,
   repoFromUrl,
   assignEmbeddingsToActions,
+  query,
+  upsert
 } from "./utils";
 
 // The maximum batch size for indexing programs in pinecone
 const BATCH_SIZE = 25;
-const INDEX = "membrane";
 
 state.directoryPrograms = state.directoryPrograms ?? [];
 state.userPrograms = state.userPrograms ?? [];
@@ -44,15 +45,9 @@ export async function objetive({ args: { text } }) {
       "Invoke `:configure` to load the programs into the Pinecone database."
     );
   }
-  // Query the Pinecone index to find matching tools
+
   const vector = await createEmbedding({ text: text });
-  const res = await nodes.pinecone.indexes.one({ name: INDEX }).query({
-    top_k: 20,
-    includeMetadata: true,
-    vector,
-    namespace: "fields_functions",
-  });
-  const { matches } = JSON.parse(res);
+  const matches = query(20, vector, "functions"); 
   // Pre-defined system tools
   let tools: any = [
     {
@@ -159,7 +154,7 @@ async function createEmbedding({ text }) {
     .one({ id: "text-embedding-ada-002" })
     .createEmbeddings({ input: text });
 
-  return JSON.stringify(JSON.parse(result)[0].embedding);
+  return result[0].embedding;
 }
 
 async function ask(action, promises) {
@@ -270,7 +265,8 @@ async function loadDirectoryPrograms() {
         );
         // TODO: check if the program is outdated
         const isOutdated = !program || program.sha !== sha;
-        if (isOutdated) {
+        // TODO: @aranajhonny remove the google-sheets program from the outdated check
+        if (isOutdated && name !== "google-sheets") {
           console.log(`program ${name} is outdated`);
           const content = JSON.parse(res.content?.file?.content as string);
           const t1 = new SchemaTraversal(content.schema);
@@ -286,10 +282,7 @@ async function loadDirectoryPrograms() {
 
       for (let i = 0; i < actions.length; i += BATCH_SIZE) {
         const group = actions.slice(i, i + BATCH_SIZE);
-        await nodes.pinecone.indexes.one({ name: INDEX }).upsert({
-          namespace: "fields_functions",
-          vectors: JSON.stringify(group),
-        });
+        upsert(group, "functions");
       }
     }
   } catch (error) {
@@ -331,10 +324,7 @@ async function loadUserPrograms() {
       // Index the actions in batches to Pinecone
       for (let i = 0; i < actions.length; i += BATCH_SIZE) {
         const group = actions.slice(i, i + BATCH_SIZE);
-        await nodes.pinecone.indexes.one({ name: INDEX }).upsert({
-          namespace: "fields_functions",
-          vectors: JSON.stringify(group),
-        });
+        upsert(group, "functions");
       }
     }
   } catch (error) {

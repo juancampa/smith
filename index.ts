@@ -1,5 +1,5 @@
 import { nodes, root, state } from "membrane";
-import { $$, SchemaTraversal} from "@membrane/membrane-sdk-js";
+import { $$, SchemaTraversal } from "@membrane/membrane-sdk-js";
 import { LLM } from "./llm";
 import { traverse } from "./schemaUtils";
 import {
@@ -11,11 +11,8 @@ import {
   repoFromUrl,
   assignEmbeddingsToActions,
   query,
-  upsert
+  upsert,
 } from "./utils";
-
-// The maximum batch size for indexing programs in state
-const BATCH_SIZE = 25;
 
 state.directoryPrograms = state.directoryPrograms ?? [];
 state.userPrograms = state.userPrograms ?? [];
@@ -40,13 +37,11 @@ export async function configure() {
 
 export async function objetive({ args: { text } }) {
   if (!state.directoryPrograms.length || !state.userPrograms.length) {
-    throw new Error(
-      "Invoke `:configure` to load the programs."
-    );
+    throw new Error("Invoke `:configure` to load the programs.");
   }
 
   const vector = await createEmbedding({ text: text });
-  const matches = query(20, vector, "functions"); 
+  const matches = query(20, vector, "functions");
   // Pre-defined system tools
   let tools: any = [
     {
@@ -278,11 +273,7 @@ async function loadDirectoryPrograms() {
     if (actions.length > 0) {
       await assignEmbeddingsToActions(actions);
       console.log(`saving ${actions.length} nodes.`);
-
-      for (let i = 0; i < actions.length; i += BATCH_SIZE) {
-        const group = actions.slice(i, i + BATCH_SIZE);
-        upsert(group, "functions");
-      }
+      upsert(actions, "functions");
     }
   } catch (error) {
     throw new Error(error);
@@ -319,11 +310,8 @@ async function loadUserPrograms() {
       // Assign embeddings to actions
       await assignEmbeddingsToActions(actions);
       console.log(`saving ${actions.length} nodes.`);
-
-      for (let i = 0; i < actions.length; i += BATCH_SIZE) {
-        const group = actions.slice(i, i + BATCH_SIZE);
-        upsert(group, "functions");
-      }
+      // Save actions
+      upsert(actions, "functions");
     }
   } catch (error) {
     throw new Error(error);

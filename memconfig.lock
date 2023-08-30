@@ -39,7 +39,7 @@
               {
                 "name": "action",
                 "description": "",
-                "type": "String",
+                "type": "Json",
                 "params": [
                   {
                     "name": "gref",
@@ -53,7 +53,7 @@
               {
                 "name": "query",
                 "description": "",
-                "type": "String",
+                "type": "Json",
                 "params": [
                   {
                     "name": "query",
@@ -264,14 +264,14 @@
               {
                 "name": "schema",
                 "description": "",
-                "type": "String",
+                "type": "Json",
                 "params": [],
                 "hints": {}
               },
               {
                 "name": "expressions",
                 "description": "",
-                "type": "String",
+                "type": "Json",
                 "params": [],
                 "hints": {}
               },

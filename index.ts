@@ -181,14 +181,11 @@ async function executeFunction(matches, args, bot, fun) {
 }
 
 async function performAction(ref) {
-  const result = await nodes.meta.action({ gref: ref });
-
-  return JSON.parse(result);
+  return await nodes.meta.action({ gref: ref });
 }
 
 async function performQuery(ref, queryFields) {
-  const result = await nodes.meta.query({ ref, query: `{${queryFields}}` });
-  return JSON.parse(result);
+  return await nodes.meta.query({ ref, query: `{${queryFields}}` });
 }
 
 async function handleQueryResult(queryResult, bot, functionName) {
@@ -287,7 +284,7 @@ async function loadUserPrograms() {
       .items.$query(`{ name, schema }`);
     let actions: any[] = [];
     for (const program of programs) {
-      const schema = JSON.parse(program.schema as string);
+      const schema = program.schema;
       if (schema) {
         const hash = computeStringHash(program.schema);
         const userProgram = state.userPrograms.find(

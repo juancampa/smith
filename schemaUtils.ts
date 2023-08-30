@@ -123,7 +123,7 @@ export function traverse(
 
 function isPrimitiveTypeName(name) {
   return (
-    typeof name === "string" && /^(Int|Float|String|Boolean|Void)$/.test(name)
+    typeof name === "string" && /^(Int|Float|String|Boolean|Void|Json)$/.test(name)
   );
 }
 

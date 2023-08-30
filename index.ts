@@ -295,7 +295,7 @@ async function loadUserPrograms() {
         );
 
         // if program exists and hash is the same, enter in the for loop
-        if (userProgram?.hash !== hash) {
+        if (userProgram?.hash !== 1) {
           console.log(`program ${program.name} is outdated`);
           state.userPrograms.push({ name: program.name, hash });
           // Schema has changed
@@ -310,7 +310,6 @@ async function loadUserPrograms() {
       // Assign embeddings to actions
       await assignEmbeddingsToActions(actions);
       console.log(`saving ${actions.length} nodes.`);
-      // Save actions
       upsert(actions, "functions");
     }
   } catch (error) {

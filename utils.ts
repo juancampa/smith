@@ -10,7 +10,8 @@ function transformJSON(params, metadata) {
     String: "string",
     Boolean: "boolean",
     Void: "void",
-    Float: "number"
+    Float: "number",
+    Json: "string",
   };
 
   const transformed: any = {
@@ -157,7 +158,7 @@ async function assignEmbeddingsToActions(actions) {
   // Collect the descriptions for all actions
   const descriptions = actions.map((action) => action.metadata.description);
   const embeddingPromises: Promise<any>[] = [];
-  const embeddingPromise = getAdaEmbedding(JSON.stringify(descriptions));
+  const embeddingPromise = getAdaEmbedding(descriptions);
   embeddingPromises.push(embeddingPromise);
 
   const embeddingResult = await embeddingPromise;
@@ -172,7 +173,7 @@ async function assignEmbeddingsToActions(actions) {
 }
 
 // Get the Ada embedding for the given text.
-async function getAdaEmbedding(inputs: string): Promise<any> {
+async function getAdaEmbedding(inputs): Promise<any> {
   const result = await nodes.openai.models
     .one({ id: "text-embedding-ada-002" })
     .createEmbeddings({ inputs });

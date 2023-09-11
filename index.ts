@@ -19,7 +19,7 @@ state.userPrograms = state.userPrograms ?? [];
 
 let questionPromise = state.questionPromise ?? null;
 
-export async function answer({ args: { text } }) {
+export async function answer({ text }) {
   if (questionPromise) {
     questionPromise.value = text;
     questionPromise.resolve(text);
@@ -35,7 +35,7 @@ export async function configure() {
   }
 }
 
-export async function objetive({ args: { text } }) {
+export async function objetive({ text }) {
   if (!state.directoryPrograms.length || !state.userPrograms.length) {
     throw new Error("Invoke `:configure` to load the programs.");
   }

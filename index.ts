@@ -249,7 +249,7 @@ async function loadDirectoryPrograms() {
               name
               content {
                 file(path: "memconfig.json") {
-                  content
+                  contentText
                 }
             }
           }`
@@ -259,7 +259,7 @@ async function loadDirectoryPrograms() {
         // TODO: @aranajhonny remove the google-sheets program from the outdated check
         if (isOutdated && name !== "google-sheets") {
           console.log(`program ${name} is outdated`);
-          const content = JSON.parse(res.content?.file?.content as string);
+          const content = JSON.parse(res.content?.file?.contentText as string);
           const t1 = new SchemaTraversal(content.schema);
           const members = new Set();
           traverse(name, t1, null, members, actions, true, null);

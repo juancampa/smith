@@ -153,7 +153,6 @@ export const Task = {
     for (const vector of matches) {
       const ref = vector.metadata.ref;
       let id = vector.id;
-      console.log(`>>> id: ${id}`);
       const actionObj = {
         type: "function",
         function: {

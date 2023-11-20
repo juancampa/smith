@@ -148,7 +148,7 @@ function createRef(ref: any, args: any): any {
       const obj = replaceArgs(argsRef, args);
       newRef = newRef.push(patch, obj);
     } else {
-      newRef = newRef.push(patch);
+      newRef = newRef.push(patch, {});
     }
   }
   return newRef.toString();

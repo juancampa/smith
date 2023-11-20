@@ -4,6 +4,8 @@ interface ChatMessage {
   role: string;
   content: string;
   name?: string;
+  tool_call_id?: string;
+  tool_calls?: any[];
 }
 
 export class LLM {
@@ -22,14 +24,23 @@ export class LLM {
 
   async execute(): Promise<any> {
     const result = await nodes.openai.models
-      .one({ id: "gpt-4" })
+      .one({ id: "gpt-4-1106-preview" })
       .completeChat({
         messages: this.messages,
-        functions: this.functions,
+        tools: this.functions,
       });
     return result;
   }
 
+  async finalize(): Promise<any> {
+    const result = await nodes.openai.models
+      .one({ id: "gpt-4-1106-preview" })
+      .completeChat({
+        messages: this.messages,
+        tools: this.functions,
+      });
+    return result;
+  }
   async user(message: string): Promise<any> {
     this.messages.push({ role: "user", content: message });
     const result = await this.execute();
@@ -37,15 +48,13 @@ export class LLM {
     return result;
   }
 
-  async function(message: string, name: string): Promise<any> {
-    this.messages.push({ role: "function", content: message, name });
-    const result = await this.execute();
-    return result;
+  async function(message: string, name: string, tool_call_id: string): Promise<any> {
+    this.messages.push({ role: "tool", content: message, name, tool_call_id});
+    // const result = await this.execute();
+    // return result;
   }
 
-  async assistant(message: string): Promise<any> {
-    this.messages.push({ role: "assistant", content: message });
-    const result = await this.execute();
-    return result;
+  async assistant(message: string, tool_calls: any[]): Promise<any> {
+    this.messages.push({ role: "assistant", content: message , tool_calls });
   }
 }

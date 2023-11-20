@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@membrane/membrane-sdk-js@0.2.3":
-  version "0.2.3"
-  resolved "https://registry.yarnpkg.com/@membrane/membrane-sdk-js/-/membrane-sdk-js-0.2.3.tgz#6eb0ced9077c0487172a0fc752cab3169d6169f7"
-  integrity sha512-oY8e64gUTzych9HD9S62i4T7ORP5nKwFXfG9z2xibZ7VFqC81QvAKwHRWF7Yi34XsEmFpvCuMTTPTltOUqczWg==
+"@membrane/membrane-sdk-js@0.2.4":
+  version "0.2.4"
+  resolved "https://registry.yarnpkg.com/@membrane/membrane-sdk-js/-/membrane-sdk-js-0.2.4.tgz#5d1de589ee6f286df49b9f85ed8468a0c86ffd04"
+  integrity sha512-/wtCdjfKqUWw1+3S8byay8IeZNFHVGaD405+erTfw166AxwYKpC1gamHQIQHIrt5zSQFyV1AsLaaYEIJhg8FmQ==
   dependencies:
     deep-equal "^1.0.1"
     immutable "^4.3.0"

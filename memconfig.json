@@ -9,8 +9,55 @@
             "type": "Void"
           },
           {
+            "name": "start",
+            "type": "Ref",
+            "params": [
+              {
+                "name": "objetive",
+                "type": "String"
+              },
+              {
+                "name": "context",
+                "type": "String",
+                "optional": true
+              }
+            ],
+            "ofType": "Task"
+          }
+        ],
+        "fields": [
+          {
+            "name": "task",
+            "type": "Task",
+            "params": [
+              {
+                "name": "id",
+                "type": "Int"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Task",
+        "fields": [
+          {
             "name": "objetive",
-            "type": "String",
+            "type": "String"
+          },
+          {
+            "name": "result",
+            "type": "String"
+          },
+          {
+            "name": "pendingQuestion",
+            "type": "String"
+          }
+        ],
+        "actions": [
+          {
+            "name": "answer",
+            "type": "Void",
             "params": [
               {
                 "name": "text",
@@ -19,14 +66,8 @@
             ]
           },
           {
-            "name": "answer",
-            "type": "String",
-            "params": [
-              {
-                "name": "text",
-                "type": "String"
-              }
-            ]
+            "name": "start",
+            "type": "Void"
           }
         ]
       }

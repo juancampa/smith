@@ -23,7 +23,7 @@ export class LLM {
     }
     this.functions = functions;
   }
-// gpt-4-1106-preview gpt-3.5-turbo-1106
+
   async execute(): Promise<any> {
     const result = await nodes.openai.models
       .one({ id: "gpt-3.5-turbo-1106" }) 
@@ -56,8 +56,6 @@ export class LLM {
 
   async function(message: string, name: string, tool_call_id: string): Promise<any> {
     this.messages.push({ role: "tool", content: message, name, tool_call_id});
-    // const result = await this.execute();
-    // return result;
   }
 
   async assistant(message: string, tool_calls: any[]): Promise<any> {

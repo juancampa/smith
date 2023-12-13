@@ -46,14 +46,13 @@ function transformJSON(params, metadata) {
       return;
     }
     const transformedType = typeMappings[type];
-    transformed.properties[result] = {
+    transformed.properties[item[0]] = {
       type: transformedType.toLowerCase(),
     };
     if (!booleanValue) {
-      transformed.required.push(result);
+      transformed.required.push(item[0]);
     }
   });
-
   return transformed;
 }
 

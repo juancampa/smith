@@ -20,6 +20,11 @@
                 "name": "context",
                 "type": "String",
                 "optional": true
+              },
+              {
+                "name": "additionalPrompt",
+                "type": "String",
+                "optional": true
               }
             ],
             "ofType": "Task"
@@ -52,6 +57,16 @@
           {
             "name": "pendingQuestion",
             "type": "String"
+          },
+          {
+            "name": "id",
+            "type": "String"
+          }
+        ],
+        "events": [
+          {
+            "name": "onResult",
+            "type": "TaskEvent"
           }
         ],
         "actions": [
@@ -67,7 +82,29 @@
           },
           {
             "name": "start",
-            "type": "Void"
+            "type": "Void",
+            "params": [
+              {
+                "name": "text",
+                "type": "String",
+                "optional": true
+              },
+              {
+                "name": "additionalPrompt",
+                "type": "String",
+                "optional": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "TaskEvent",
+        "fields": [
+          {
+            "name": "task",
+            "type": "Ref",
+            "ofType": "Task"
           }
         ]
       }

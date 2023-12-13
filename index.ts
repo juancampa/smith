@@ -20,19 +20,18 @@ state.schemas = state.schemas ?? [];
 state.nextId = state.nextId ?? 1;
 state.subjects = state.subjects ?? [];
 state.tasks = state.tasks ?? [];
-// let questionPromise = state.questionPromise ?? null;
+state.previosObjetives = state.previosObjetives ?? [];
 
 export const Root = {
   task: () => ({}),
   configure: async () => {
     try {
-      await loadDirectoryPrograms();
       await loadUserPrograms();
     } catch (error) {
       throw new Error(error);
     }
   },
-  start: async ({ context, objetive }) => {
+  start: async ({ context, objetive, additionalPrompt }) => {
     const id = state.nextId++;
     state.tasks.push({
       id,
@@ -40,12 +39,16 @@ export const Root = {
       context,
       result: null,
     });
-    root.task({ id }).start().$invoke();
+    root.task({ id }).start({ additionalPrompt }).$invoke();
     return root.task({ id });
   },
 };
 
 export const Task = {
+  id: (_, { self }) => {
+    const { id } = self.$argsAt(root.task);
+    return id;
+  },
   answer: ({ text }, { self }) => {
     const { id } = self.$argsAt(root.task);
     const task = state.tasks.find((task) => task.id === id);
@@ -67,19 +70,22 @@ export const Task = {
     const { id } = self.$argsAt(root.task);
     return state.tasks.find((task) => task.id === id).pendingQuestion;
   },
-  start: async (_, { self }) => {
+  start: async ({ text, additionalPrompt }, { self }) => {
     const { id: taskId } = self.$argsAt(root.task);
+    const task = state.tasks.find((task) => task.id === taskId);
+    let objetive = text;
+    if (!objetive) {
+      objetive = task.objetive;
+    }
 
-    const { id, context, objetive } = state.tasks.find(
-      (task) => task.id === taskId
-    );
+    const { id, context } = task;
 
     if (!id) {
       throw new Error("Task not found");
     }
 
     const vector = await createEmbedding({ text: objetive });
-    const matches = query(30, vector, "functions");
+    const matches = query(10, vector, "functions");
 
     // Pre-defined system tools
     let tools: any = [
@@ -164,46 +170,52 @@ export const Task = {
       tools.push(actionObj);
     }
 
-    let prompt = `
-  In the context of:
-    "${task_context}"
+    // In the context of:
+    // "${task_context}"
 
-  I would like you to help me with the following task:
-    ${objetive}
+    // Previuosly used objectives: ${state.previosObjetives
+    //   .map((match: string) => "- " + match)
+    //   .join("\n")}
+    // Return only the Node. dont say anything else.
 
-  Additional things that might or might not be useful are, Previuosly context used: ${state.subjects
-    .map((match) => "- " + match)
-    .join("\n")}
+    // Additional things that might or might not be useful are, Previuosly context used: ${state.subjects
+    //   .map((match) => "- " + match)
+    //   .join("\n")}
 
+    let prompt = `I would like you to help me with a task.
   Don't make assumptions about what values. Ask for clarification if a user request is ambiguous, use the 'function: ask' to clarify.
-  
-  Return only the Node. dont say anything else.
+  Don't generate fake data, use the 'functions' to get real data.
+
+  Use all parameters that are provided in the 'functions'.
+  ${
+    additionalPrompt
+      ? `Important! Additional considerations: ${additionalPrompt}`
+      : ""
+  }
   `;
     const subjectExists = state.subjects.find((item) => item === context);
     if (!subjectExists && context) {
       state.subjects.push(context);
     }
     const bot = new LLM(prompt, tools);
-    // console.log(prompt);
+
     const promises: any[] = [];
     let resolved = false;
     let next_prompt = objetive;
-
+    state.previosObjetives.push(objetive);
     while (true) {
-      if (resolved) {
-        break;
-      }
       let funResult: any;
       let final: any = "";
       if (next_prompt === 0) {
         funResult = await bot.finalize();
         await bot.assistant(funResult.content, funResult.tool_calls);
-        final = await bot.finalize();
       } else {
         funResult = await bot.user(next_prompt);
       }
       if (!funResult.tool_calls) {
-        console.log("Result: ", final.content);
+        console.log("Result: ", funResult.content);
+        const taskRef: any = root.task({ id });
+        await root.task({ id }).onResult.$emit({ task: taskRef });
         const task = state.tasks.find((task) => task.id === id);
         task.result = funResult.content;
         task.objetive = objetive;
@@ -269,7 +281,11 @@ export const Task = {
         }
         await bot.function(content, result.name, result.id);
       }
-      next_prompt = 0;
+
+      if (results.length === funResult.tool_calls.length) {
+        console.log(">>> Finalizing");
+        next_prompt = 0;
+      }
     }
   },
 };
@@ -304,13 +320,14 @@ async function executeFunction(matches, args, bot, fun, id) {
   result.metadata.ref = replaceShared(result.metadata.ref);
   result.metadata.program = replaceShared(result.metadata.program);
 
-  const actionRef = $$(result.metadata.ref.replace(/#(true|false)/g, ""));
+  const actionRef = $$(
+    result.metadata.ref.replace(/#(true|false)/g, "").replace(/\$[^}]+/g, "")
+  );
 
   const ref = createRef(actionRef, args);
 
   console.log(`Ref: ${ref}`);
-  console.log(`Executing: ${name}`);
-
+  
   if (args.queryFields) {
     const queryResult = await performQuery(ref, args.queryFields);
     // return await handleQueryResult(queryResult, bot, fun.name);
@@ -340,95 +357,6 @@ const replaceShared = (name: string, rev: boolean = false) => {
 
 async function performQuery(ref, queryFields) {
   return await nodes.meta.query({ ref, query: `{${queryFields}}` });
-}
-
-// async function handleQueryResult(queryResult, bot, functionName) {
-//   const { data } = queryResult;
-//   let answer = await bot.function(
-//     JSON.stringify({ result: JSON.stringify(data) }),
-//     functionName
-//   );
-
-//   if (answer.content === null) {
-//     const tool = JSON.parse(answer.function_call.arguments);
-//     answer = tool.message;
-//   } else {
-//     answer = answer.content;
-//   }
-//   return answer;
-// }
-
-// async function handleActionResult(actionResult, bot, functionName, id) {
-//   const { data, errors } = actionResult;
-//   let result;
-//   // Check if there are any errors
-//   if (errors.length > 0) {
-//     result = `Failed to execute. Error: ${JSON.stringify(errors)}`;
-//   } else {
-//     result = `Executed successfully, Results: ${JSON.stringify(data)}`;
-//   }
-
-//   let answer = await bot.function(result, functionName, id);
-
-//   if (answer.content === null) {
-//     const tool = JSON.parse(answer.function_call.arguments);
-//     answer = tool.message;
-//   } else {
-//     answer = answer.content;
-//   }
-
-//   return answer;
-// }
-
-async function loadDirectoryPrograms() {
-  try {
-    // Fetching all programs of directory
-    const repos = await nodes.github.users
-      .one({ name: "membrane-io" })
-      .repos.one({ name: "directory" })
-      .content.dir.$query(`{ name sha html_url size download_url }`);
-    // Filtering the programs by checking if they are submodules
-    const isSubmodule = (item: any) => !item.download_url && item.size === 0;
-    let actions: any[] = [];
-    // Iterate over the filtered submodules and process each one
-    await Promise.all(
-      repos.filter(isSubmodule).map(async (item) => {
-        const sha = item.sha;
-        const name: any = item.name;
-        const program = state.directoryPrograms.find(
-          (program) => program.name === name
-        );
-        const res = await repoFromUrl(item.html_url as any).$query(
-          `{
-              name
-              content {
-                file(path: "memconfig.json") {
-                  contentText
-                }
-            }
-          }`
-        );
-        // TODO: check if the program is outdated
-        const isOutdated = !program || program.sha !== sha;
-        // TODO: @aranajhonny remove the google-sheets program from the outdated check
-        if (isOutdated && name !== "google-sheets") {
-          console.log(`program ${name} is outdated`);
-          const content = JSON.parse(res.content?.file?.contentText as string);
-          const t1 = new SchemaTraversal(content.schema);
-          const members = new Set();
-          traverse(name, t1, null, members, actions, true, null);
-          state.directoryPrograms.push(item);
-        }
-      })
-    );
-    if (actions.length > 0) {
-      await assignEmbeddingsToActions(actions);
-      console.log(`saving ${actions.length} nodes.`);
-      upsert(actions, "functions");
-    }
-  } catch (error) {
-    throw new Error(error);
-  }
 }
 
 async function loadUserPrograms() {

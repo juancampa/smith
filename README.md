@@ -7,7 +7,7 @@ This is a AI-powered task management system Based on [BabyAGI](https://babyagi.o
 
 **Initialization:** The agent creates a new task based on the user's specified objective, adds it to a list of tasks (state.tasks), and begins execution.
 
-**Task Target Processing:** An embedding vector is generated from the target text. Subsequently, a query is conducted to identify functions that correspond with this vector.
+**Preparing the tools:** An embedding vector is generated from the target text. Subsequently, a query is conducted to identify functions that correspond with this vector.
 
 **Predefined Tools:** Certain tools (such as ask, tell, sleep) are predefined. These tools serve as auxiliary functions for interacting with the user or managing the program's flow.
 

@@ -170,18 +170,6 @@ export const Task = {
       tools.push(actionObj);
     }
 
-    // In the context of:
-    // "${task_context}"
-
-    // Previuosly used objectives: ${state.previosObjetives
-    //   .map((match: string) => "- " + match)
-    //   .join("\n")}
-    // Return only the Node. dont say anything else.
-
-    // Additional things that might or might not be useful are, Previuosly context used: ${state.subjects
-    //   .map((match) => "- " + match)
-    //   .join("\n")}
-
     let prompt = `I would like you to help me with a task.
   Don't make assumptions about what values. Ask for clarification if a user request is ambiguous, use the 'function: ask' to clarify.
   Don't generate fake data, use the 'functions' to get real data.
@@ -192,6 +180,15 @@ export const Task = {
       ? `Important! Additional considerations: ${additionalPrompt}`
       : ""
   }
+
+  Previuosly used objectives: ${state.previosObjetives
+    .map((match: string) => "- " + match)
+    .join("\n")}
+  Return only the Node. dont say anything else.
+
+  Additional things that might or might not be useful are, Previuosly context used: ${state.subjects
+    .map((match) => "- " + match)
+    .join("\n")}
   `;
     const subjectExists = state.subjects.find((item) => item === context);
     if (!subjectExists && context) {
@@ -205,7 +202,6 @@ export const Task = {
     state.previosObjetives.push(objetive);
     while (true) {
       let funResult: any;
-      let final: any = "";
       if (next_prompt === 0) {
         funResult = await bot.finalize();
         await bot.assistant(funResult.content, funResult.tool_calls);
@@ -219,7 +215,6 @@ export const Task = {
         const task = state.tasks.find((task) => task.id === id);
         task.result = funResult.content;
         task.objetive = objetive;
-        // resolved = true;
         break;
       }
 
@@ -283,7 +278,6 @@ export const Task = {
       }
 
       if (results.length === funResult.tool_calls.length) {
-        console.log(">>> Finalizing");
         next_prompt = 0;
       }
     }
@@ -327,14 +321,12 @@ async function executeFunction(matches, args, bot, fun, id) {
   const ref = createRef(actionRef, args);
 
   console.log(`Ref: ${ref}`);
-  
+
   if (args.queryFields) {
     const queryResult = await performQuery(ref, args.queryFields);
-    // return await handleQueryResult(queryResult, bot, fun.name);
     return { actionResult: queryResult, name, id };
   }
   const actionResult = await performAction(ref);
-  // return await handleActionResult(actionResult, bot, fun.name, id);
   return { actionResult, name, id };
 }
 
@@ -422,15 +414,6 @@ async function formatSubject(
   const t1 = new RefTraversal(gref.withoutProgram(), schema);
   t1.toEnd();
   const type = t1.type.name;
-  // const actions = t1.type.actions.map((action) => {
-  //   const params = {};
-  //   action.params.forEach((param) => {
-  //     params[param.name] = `{${param.name}$${param.type}${
-  //       param.optional ? `#optional` : ""
-  //     }}`;
-  //   });
-  //   return gref.push(action.name, params).toString();
-  // });
   const subject = `A Node representing a <${type}> in the program <${gref.program}> referenceable by the following path: ${gref}`;
 
   return {

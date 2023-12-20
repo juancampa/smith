@@ -2,7 +2,7 @@
 
 This is a AI-powered task management system Based on [BabyAGI](https://babyagi.org/) that uses Membrane and OpenAI.
 
-![Captura de pantalla 2023-12-13 a la(s) 10 18 07 a  m](https://github.com/membrane-io/membrane-agi/assets/9091881/255360f7-3823-43c4-a6fe-b679a776da37)
+![Captura de pantalla 2023-12-13 a la(s) 11 04 52 a  m](https://github.com/membrane-io/membrane-agi/assets/9091881/c29f4ccd-aae5-4f08-8471-2afe1fc5c1a5)
 
 
 **Initialization:** The agent creates a new task based on the user's specified objective, adds it to a list of tasks (state.tasks), and begins execution.

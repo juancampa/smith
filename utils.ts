@@ -1,5 +1,5 @@
 import { nodes, root, state } from "membrane";
-import { $$ } from "@membrane/membrane-sdk-js";
+import { $$, Ref } from "@membrane/sdk";
 import { magnitude, similarityScores } from "vectorcalc";
 
 state.vectors = state.vectors || {};
@@ -22,62 +22,60 @@ function transformJSON(params, metadata) {
 
   if (metadata.query) {
     const cleanedString = metadata.query.replace(/[{} ]/g, "");
-    const stringArray = cleanedString.split(",");
 
     transformed.properties["queryFields"] = {
       type: "string",
-      description: `This parameter is used to get this information [${stringArray}] of a ${metadata.type} type, available in ${metadata.program}. return in array of strings.`,
+      description: `A list of comma-separated fields to query. Available fields: ${cleanedString}.`,
     };
     transformed.required.push("queryFields");
   }
 
   params.forEach((param) => {
-    const { result, booleanValue } = extractBooleanValue(param);
+    const { result, isOptional } = extractIsOptional(param);
 
     let type = "unknown";
     const item = result.split("$");
 
+    let name: string;
     if (item.length === 3) {
+      name = [item[0], item[1]].join("$");
       type = item[2];
-    } else if (item.length === 2) {
+    } else {
+      //assert(item.length === 2);
+      name = item[0];
       type = item[1];
     }
-    if (!isScalar(type)) {
+    const transformedType = typeMappings[type];
+    if (!transformedType) {
       return;
     }
-    const transformedType = typeMappings[type];
-    transformed.properties[item[0]] = {
+    transformed.properties[name] = {
       type: transformedType.toLowerCase(),
     };
-    if (!booleanValue) {
-      transformed.required.push(item[0]);
+    if (!isOptional) {
+      transformed.required.push(name);
     }
   });
   return transformed;
 }
 
-function transformString(inputString) {
-  var transformedString = inputString.replace(/:/g, "_");
-  return transformedString;
-}
-
 // parse param$type$#optional and return the boolean and the string of param$type
-function extractBooleanValue(str) {
+function extractIsOptional(str) {
   const splitArray = str.split("#");
   const extractedValue = splitArray[splitArray.length - 1];
-  const booleanValue =
+  const isOptional =
     extractedValue === "true"
       ? true
       : extractedValue === "false"
       ? false
       : null;
   const result = splitArray.slice(0, splitArray.length - 1).join("#");
-  return { result, booleanValue };
+  return { result, isOptional };
 }
 
-function extractParams(inputString: string): string[] {
+function extractParams(inputString) {
   const regex = /\{(.*?)\}/g;
-  const params: string[] = [];
+  const params = [];
   let match;
 
   while ((match = regex.exec(inputString)) !== null) {
@@ -88,7 +86,8 @@ function extractParams(inputString: string): string[] {
 
 function isScalar(name) {
   return (
-    typeof name === "string" && /^(Int|Float|String|Boolean|Void)$/.test(name)
+    typeof name === "string" &&
+    /^(Int|Float|String|Boolean|Json|Void)$/.test(name)
   );
 }
 
@@ -96,94 +95,91 @@ function isObjectEmpty(obj) {
   return Object.keys(obj).length === 0;
 }
 
-// function to replace the args value for the ref
-function replaceArgs(obj, args) {
-  const regex = /\{([^{}]+)\}/g;
-
-  const replaceFn = (_, match) => {
-    const argValue = args[match];
-    if (argValue !== undefined && argValue !== "" && argValue !== "undefined") {
-      return argValue;
-    }
-    return undefined;
-  };
-
-  const jsonString = JSON.stringify(obj);
-  const replacedString = jsonString.replace(regex, replaceFn);
-  const replacedObj = JSON.parse(replacedString, (_, value) => {
-    if (typeof value === "string") {
-      try {
-        const parsedValue = JSON.parse(value);
-        if (
-          typeof parsedValue === "boolean" ||
-          typeof parsedValue === "number"
-        ) {
-          return parsedValue;
-        }
-        return value;
-      } catch (error) {}
-    }
-    return value;
-  });
-
+// Replaces the arg templates (e.g. arg$Type#true) for actual values provided by the LLM.
+function replaceArgs(obj, argValues) {
   const result = {};
-  for (const key in replacedObj) {
-    const propertyValue = replacedObj[key];
-    if (propertyValue !== undefined && propertyValue !== "undefined") {
-      result[key] = propertyValue;
+  for (const [key, value] of Object.entries(obj)) {
+    const val = (value as string).replace(/[{} ]/g, "");
+    const argSplit = val.split("$");
+    let argName;
+    if (argSplit.length === 3) {
+      argName = [argSplit[0], argSplit[1]].join("$");
+    } else {
+      argName = argSplit[0];
+    }
+    const argValue = argValues[argName];
+    if (argValue !== undefined && argValue !== "" && argValue !== "undefined") {
+      result[key] = argValue;
     }
   }
+
+  // console.log("REPLACED ARGS");
+  // console.log("    OBJ", obj);
+  // console.log("    ARGVALUES", argValues);
+  // console.log("    RESULT", result);
+
+  /// { id: "{id$String#true}", name: "{name$String#true}" }
+
+  // TODO: It's a bad idea to replace stuff in a stringified JSON because it might replace inner content.
+  // const jsonString = JSON.stringify(obj);
+  // console.log("STRINGIFYING", jsonString);
+  // const replacedString = jsonString.replace(regex, replaceFn);
+
+  // console.log("REPLACING", replacedString);
+  // const replacedObj = JSON.parse(replacedString, (_, value) => {
+  // if (typeof value === "string") {
+  //   try {
+  //     // console.log("PARSING", value);
+  //     const parsedValue = JSON.parse(value);
+  //     if (
+  //       typeof parsedValue === "boolean" ||
+  //       typeof parsedValue === "number"
+  //     ) {
+  //       return parsedValue;
+  //     }
+  //     return value;
+  //   } catch (error) {}
+  // }
+  //   return value;
+  // });
+
+  // const result = {};
+  // for (const key in replacedObj) {
+  //   const propertyValue = replacedObj[key];
+  //   if (propertyValue !== undefined && propertyValue !== "undefined") {
+  //     result[key] = propertyValue;
+  //   }
+  // }
   return result;
 }
 
-// function to create a new ref with args
-function createRef(ref: any, args: any): any {
-  const program = ref.program + ":";
+// Applies the arguments provided by the LLM to a tool template gref.
+function createToolGref(refTemplate: Ref, argValues: any): Ref {
+  const program = refTemplate.program + ":";
   let newRef = $$(program);
-  for (let i = 0; i < ref.path.size; ++i) {
-    const patch = ref.path.get(i).name;
-    const argsRef = ref.path.get(i).args.toObject();
-    if (!isObjectEmpty(argsRef)) {
-      const obj = replaceArgs(argsRef, args);
-      newRef = newRef.push(patch, obj);
-    } else {
-      newRef = newRef.push(patch, {});
-    }
+  for (let elem of refTemplate.path) {
+    const argsTemplate = elem.args.toObject();
+    newRef = newRef.push(elem.name, replaceArgs(argsTemplate, argValues));
   }
-  return newRef.toString();
+  return newRef;
 }
 
-async function assignEmbeddingsToActions(actions) {
-  // Collect the descriptions for all actions
-  const descriptions = actions.map((action) => action.metadata.description);
-  const embeddingPromises: Promise<any>[] = [];
-  const embeddingPromise = getAdaEmbedding(descriptions);
-  embeddingPromises.push(embeddingPromise);
+// Create embeddings for every tool description
+async function assignEmbeddingsToTools(tools) {
+  const descriptions = tools.map((tool) => tool.metadata.description);
+  const embeddings = await getAdaEmbedding(descriptions);
 
-  const embeddingResult = await embeddingPromise;
-  const embeddings = embeddingResult;
-
-  // Assign the embeddings to the corresponding actions
+  // Assign the embeddings to their corresponding tools
   for (let i = 0; i < embeddings.length; i++) {
-    actions[i].vector = embeddings[i].embedding;
+    tools[i].vector = embeddings[i].embedding;
   }
-
-  await Promise.all(embeddingPromises);
 }
 
-// Get the Ada embedding for the given text.
-async function getAdaEmbedding(inputs): Promise<any> {
-  const result = await nodes.openai.models
+// Get the Ada embedding for the given inputs.
+async function getAdaEmbedding(inputs: string[]): Promise<any> {
+  return await nodes.openai.models
     .one({ id: "text-embedding-ada-002" })
     .createEmbeddings({ inputs });
-
-  return result;
-}
-
-// Get a repository from the given URL.
-function repoFromUrl(url: string): github.Repository {
-  const [, user, repo] = url.match("https://github.com/([^/]+)/([^/]+)")!;
-  return nodes.github.users.one({ name: user }).repos.one({ name: repo });
 }
 
 // https://stackoverflow.com/questions/6122571/simple-non-secure-hash-function-for-javascript
@@ -198,6 +194,7 @@ function computeStringHash(str) {
 }
 
 function upsert(vectors: any[], namespace: string) {
+  console.log(`Upserting ${vectors.length} vectors.`);
   // If the namespace doesn't exist, create it.
   if (!state.vectors[namespace]) {
     state.vectors[namespace] = [];
@@ -226,6 +223,21 @@ function upsert(vectors: any[], namespace: string) {
   });
 }
 
+export function deleteByPrefix(prefix: string, namespace: string) {
+  const vectors = state.vectors[namespace];
+  let count = 0;
+  if (vectors) {
+    for (let i = vectors.length - 1; i >= 0; i--) {
+      if (vectors[i].id.startsWith(prefix)) {
+        vectors.splice(i, 1);
+        count += 1;
+      }
+    }
+  }
+
+  console.log(`Deleted ${count} vectors.`);
+}
+
 function query(topN: number, vector: number[], namespace: string) {
   const vectors = state.vectors[namespace];
   if (!vectors) {
@@ -240,13 +252,11 @@ export {
   query,
   upsert,
   computeStringHash,
-  repoFromUrl,
-  assignEmbeddingsToActions,
-  createRef,
+  assignEmbeddingsToTools,
+  createToolGref,
   isObjectEmpty,
   replaceArgs,
   isScalar,
   extractParams,
   transformJSON,
-  transformString,
 };

@@ -6,14 +6,22 @@
         "actions": [
           {
             "name": "configure",
-            "type": "Void"
+            "type": "Void",
+            "params": [
+              {
+                "description": "OpenAI model to use. Default: gpt-4.",
+                "name": "modelName",
+                "type": "String",
+                "optional": true
+              }
+            ]
           },
           {
             "name": "start",
             "type": "Ref",
             "params": [
               {
-                "name": "objetive",
+                "name": "objective",
                 "type": "String"
               },
               {
@@ -28,6 +36,22 @@
               }
             ],
             "ofType": "Task"
+          },
+          {
+            "name": "tell",
+            "type": "Void",
+            "params": [
+              {
+                "name": "message",
+                "type": "String"
+              },
+              {
+                "name": "replyTo",
+                "type": "Ref",
+                "ofType": "Void",
+                "optional": true
+              }
+            ]
           }
         ],
         "fields": [
@@ -40,6 +64,31 @@
                 "type": "Int"
               }
             ]
+          },
+          {
+            "name": "status",
+            "type": "String"
+          },
+          {
+            "name": "tools",
+            "type": "Json",
+            "params": [
+              {
+                "name": "query",
+                "type": "String"
+              },
+              {
+                "name": "max",
+                "type": "String",
+                "optional": true
+              }
+            ]
+          }
+        ],
+        "events": [
+          {
+            "name": "statusChanged",
+            "type": "Void"
           }
         ]
       },
@@ -47,72 +96,130 @@
         "name": "Task",
         "fields": [
           {
-            "name": "objetive",
-            "type": "String"
+            "name": "objective",
+            "type": "String",
+            "hints": {
+              "primary": true
+            }
           },
           {
             "name": "result",
             "type": "String"
           },
           {
-            "name": "pendingQuestion",
+            "name": "id",
+            "type": "Int"
+          },
+          {
+            "name": "name",
             "type": "String"
           },
           {
-            "name": "id",
-            "type": "Int"
+            "name": "status",
+            "type": "String"
+          },
+          {
+            "name": "subtasks",
+            "type": "Json"
           }
         ],
         "events": [
           {
-            "name": "onResult",
-            "type": "TaskEvent"
+            "name": "onCompleted",
+            "type": "Void"
           }
         ],
         "actions": [
           {
-            "name": "answer",
-            "type": "Void",
-            "params": [
-              {
-                "name": "text",
-                "type": "String"
-              }
-            ]
-          },
-          {
             "name": "start",
             "type": "Void",
             "params": [
-              {
-                "name": "text",
-                "type": "String",
-                "optional": true
-              },
               {
                 "name": "additionalPrompt",
                 "type": "String",
                 "optional": true
               }
             ]
+          },
+          {
+            "name": "pause",
+            "type": "Void",
+            "params": []
+          },
+          {
+            "name": "tell",
+            "type": "Void",
+            "params": [
+              {
+                "name": "message",
+                "type": "String"
+              },
+              {
+                "name": "replyTo",
+                "type": "Ref",
+                "optional": true,
+                "ofType": "Channel"
+              }
+            ]
           }
         ]
       },
       {
-        "name": "TaskEvent",
-        "fields": [
+        "name": "Channel",
+        "description": "A channel that can be used to communicate back with the sender of a message",
+        "actions": [
           {
-            "name": "task",
+            "name": "tell",
+            "description": "Sends a message on this channel",
             "type": "Ref",
-            "ofType": "Task"
+            "params": [
+              {
+                "name": "message",
+                "type": "String"
+              },
+              {
+                "name": "replyTo",
+                "type": "Ref",
+                "ofType": "Channel",
+                "optional": true
+              },
+              {
+                "name": "node",
+                "type": "Ref",
+                "ofType": "Void",
+                "description": "An optional graph node to attach to the question",
+                "optional": true
+              }
+            ],
+            "ofType": "Channel"
+          },
+          {
+            "name": "ask",
+            "type": "String",
+            "description": "Asks a question to the user of this Membrane account. This action won't resolve until the user responds to the question.",
+            "params": [
+              {
+                "description": "The question to ask the user.",
+                "name": "question",
+                "type": "String"
+              },
+              {
+                "name": "node",
+                "type": "Ref",
+                "ofType": "Void",
+                "description": "An optional graph node to attach to the question",
+                "optional": true
+              }
+            ]
           }
-        ]
+        ],
+        "fields": []
       }
     ]
   },
   "dependencies": {
     "openai": "openai:",
-    "github": "github:",
-    "meta": "meta-driver:"
+    "meta": "meta-driver:",
+    "http": "http:"
   }
 }
